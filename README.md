@@ -7,7 +7,9 @@ HTML5+PHP 大文件分片上传
 ```
 ```javascript
 <script type="text/javascript" src="shard.js"></script>
+<script type="text/javascript">
 shardUpload('#upload-btn','shard.php')
+</script>
 ```
 
 第一个参数是按钮ID，第二个参数是后端程序地址
