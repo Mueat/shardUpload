@@ -1,5 +1,5 @@
 <?php
-$path = '../storage/test/';
+$path = '../upload';
 define('_UPLOAD_PATH', $path);
 
 
