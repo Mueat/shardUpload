@@ -20,6 +20,7 @@ stats       //其他需要传给服务端的参数，如：{id:5,category_id:16}
 
 使用：
 
+```javascript
 var param = {
 
 	shardSize:1024*1024,
@@ -37,6 +38,7 @@ var param = {
 	}
 
 }
+```
 
 shardUpload('#upload-btn','shard.php',param);
 
