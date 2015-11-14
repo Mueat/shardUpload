@@ -3,6 +3,7 @@ HTML5+PHP 大文件分片上传
 
 #快速使用
 ```html
+<input type="text" name="video" id="video">
 <button type="button" name="upload-btn" id="upload-btn">上传</button>
 ```
 ```javascript
