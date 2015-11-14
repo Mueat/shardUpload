@@ -24,6 +24,8 @@ token       //上传令牌，将token传给服务端，服务端可以验证后�
 
 stats       //其他需要传给服务端的参数，如：{id:5,category_id:16}
 
+showTip     //显示上传信息的方法,默认为控制台输出，
+
 
 使用：
 
@@ -35,6 +37,18 @@ var param = {
 	stats:{
 		id:5,
 		category_id:16
+	},
+	showTip:function(info,flag){
+	    if(flag == 'success'){
+			//上传成功后回传上传成功的文件名
+			$('#video').val(info);
+		}else if(flag == 'process'){
+			//上传过程中回传上传的进度，如：56
+			$('#video').val(info+'%');
+		}else if(flag == 'notice'){
+            //一般的提示信息，如：正在准备文件
+            $('#video').val(info)
+	    }
 	}
 }
 

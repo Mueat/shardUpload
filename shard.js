@@ -65,7 +65,7 @@
 		sliceFile:function(){
 			_succeed = 0;
 			_upNum = 0;
-			this.showTip('文件准备中...');
+			this.showTip('文件准备中...','notice');
 
 			_fileObj = _file[0].files[0],  //文件对象
 			_fileSize = _fileObj.size;
@@ -87,7 +87,7 @@
 		    _fileForms = forms;
 		    console.log('总共上传：'+forms.length)
 
-		    this.showTip('文件准备上传');
+		    this.showTip('文件准备上传','notice');
 		    this.upFile();
 		},
 
@@ -147,7 +147,7 @@
 	            if(_succeed == _shardCount){
 	            	console.log(_succeed);
 	            	//TODO  全部上传完成
-	            	that.showTip('正在合并文件');
+	            	that.showTip('正在合并文件','notice');
 	            	$.post(_upUrl,{name:_fileName,total:_shardCount,mearge:'yes'},function(data){
 	            		that.showTip(data,'success');
 	            		_file.val('');
