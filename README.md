@@ -23,7 +23,7 @@ shardUpload.init(elementID,uploadUrl,config)
 
 - uploadUrl 上传的服务端地址
 
-- config 回调函数
+- config 配置参数
 
 在绑定的元素上设置 data-shardUpload属性，则在上传成功后，会将对应元素的value设置为服务返回的数据，如上面的例子中，上传成功后，会吧video的value设置为服务器返回的数据（shard.php返回的数据为合并后的文件的路劲）
 
