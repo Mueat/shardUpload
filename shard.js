@@ -4,7 +4,7 @@
 		_file, //file控件
 		_shardSize = 2 * 1024 * 1024, //每个碎片大小
 		_shardCount, //总碎片数量
-		_async = 3,       //同时上传的碎片数
+		_async = 1,       //同时上传的碎片数
 		_token = null,      //上传Token
 		_stats,       //其他参数
 		_succeed = 0;
