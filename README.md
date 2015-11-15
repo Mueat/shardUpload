@@ -1,5 +1,5 @@
 # shardUpload
-HTML5+PHP 大文件分片上传
+HTML5 大文件分片上传
 
 #快速使用
 ```html
