@@ -4,70 +4,101 @@
 		_file, //file控件
 		_shardSize = 2 * 1024 * 1024, //每个碎片大小
 		_shardCount, //总碎片数量
-		_asyn = 1,       //同时上传的碎片数
+		_async = 3,       //同时上传的碎片数
 		_token = null,      //上传Token
 		_stats,       //其他参数
 		_succeed = 0;
+		_errored = 0;
+		_abort = false;
 
 	var _fileName,  //上传的文件名称
 		_fileObj, //上传文件
 		_fileSize, //文件大小
 		_fileForms, //分片后要上传的数据包
+		_allowExts = null, //允许上传的文件格式
 		_upNum = 0; //已经进入上传队列的数目
 
 	var _upUrl;
+	var _this;
 
 	var shardUpload = {
 		
-		init:function(btn,upUrl,param){
+		init:function(btn,upUrl,config){
+			_this = this;
 			_succeed = 0;
 			_showTip = null;
 			_shardSize = 2 * 1024 * 1024;
-			_asyn = 1;
+			_async = 1;
 			_token = null;
 			_stats = null;
 			_upNum = 0;
 			var that = this;
-			_btn = btn;
+			_btn = document.getElementById(btn);
 			_upUrl = upUrl;
-			if(typeof(param) == 'object'){
-				if(typeof(param.showTip) == 'function'){
-					_showTip = param.showTip;
+			if(typeof(config) == 'object'){
+				if(typeof(config.callback) == 'function'){
+					_showTip = config.callback;
 				}
-				if(typeof(param.shardSize) != 'undefined'){
-					_shardSize = param.shardSize;
+				if(typeof(config.chunk) == 'number'){
+					_shardSize = config.chunk;
 				}
-				if(typeof(param.asyn) != 'undefined'){
-					_asyn = param.asyn;
+				if(typeof(config.async) == 'number'){
+					_async = config.async;
 				}
-				if(typeof(param.token) != 'undefined'){
-					_token = param.token;
+				if(typeof(config.token) == 'string'){
+					_token = config.token;
 				}
-				if(typeof(param.stats) != 'undefined'){
-					_stats = param.stats;
+				if(typeof(config.parame) == 'object'){
+					_stats = config.parame;
+				}
+				if(typeof(config.exts) == 'string'){
+					_allowExts = config.exts.toUpperCase();
 				}
 			}
 
 			var fileid = 'upfile-'+parseInt(Math.random()*100000);
-			$(_btn).before('<input type="file" name="'+fileid+'" id="'+fileid+'" style="display:none">');
-			_file = $('#'+fileid);
-			$(_btn).click(function(event) {
-				$('#'+fileid).click();
-			});
-			$('#'+fileid).change(function(){
-				//console.log(that);
-				that.sliceFile();
-			});
+			
+			_file = document.createElement('input');
+			_file.type = 'file';
+			_file.id = fileid;
+			_file.name = fileid;
+			_file.style.display = 'none';
+			_btn.parentNode.insertBefore(_file,_btn);
+			
+
+			_btn.onclick=function(){_file.click()};
+			_file.onchange = function(){ that.sliceFile()};
 
 
 		},
 
 		sliceFile:function(){
+			_btn.disabled = true;
 			_succeed = 0;
+			_errored = 0;
+			_abort = false;
 			_upNum = 0;
+			var fileName = _file.value;
+			var ldot = fileName.lastIndexOf(".");
+  			var fileExt = fileName.substring(ldot + 1);
+			fileExt = fileExt.toUpperCase();
+			if(_allowExts){
+				var exts = _allowExts.split('|');
+				var isValid = false;
+				for (var i = 0; i < exts.length; i++) {
+					if(exts[i] == fileExt){
+						isValid = true;
+					}
+				};
+				if(!isValid){
+					this.showTip('文件格式错误！','error');
+					return;
+				}
+			};
+
 			this.showTip('文件准备中...','notice');
 
-			_fileObj = _file[0].files[0],  //文件对象
+			_fileObj = _file.files[0],  //文件对象
 			_fileSize = _fileObj.size;
 		    _shardCount = Math.ceil(_fileSize / _shardSize);  //总片数
 		    _fileName = parseInt(Math.random()*100000)+_fileObj.name;
@@ -85,7 +116,6 @@
 		        forms.push(formObj);
 		    }
 		    _fileForms = forms;
-		    console.log('总共上传：'+forms.length)
 
 		    this.showTip('文件准备上传','notice');
 		    this.upFile();
@@ -96,13 +126,13 @@
 				end = Math.min(_fileSize, start + _shardSize);
 
 			var form = new FormData();
-			form.append("data", _fileObj.slice(start,end));  //slice方法用于切出文件的一部分
-		    form.append("name", _fileName);
-		    form.append("total", _shardCount);  //总片数
-		    form.append("index", num+1);        //当前是第几片
+			form.append("shard-data", _fileObj.slice(start,end));  //slice方法用于切出文件的一部分
+		    form.append("shard-name", _fileName);
+		    form.append("shard-total", _shardCount);  //总片数
+		    form.append("shard-index", num+1);        //当前是第几片
 		    //如果传入了Token，则设置Token
 		    if(_token != null){
-		    	form.append('token',_token);
+		    	form.append('shard-token',_token);
 			}
 			//如果传入了其他参数
 			if(_stats != null){
@@ -110,18 +140,17 @@
 					form.append(stat,_stats[stat]);
 				}
 			}
-
 			return form;
 		},
 
 		upFile:function(){
-			var upNum = 0;
+			if(_errored>0 || _abort) return;
+			
 			for(var j=0;j<_fileForms.length;j++){
-				if(upNum < _asyn){
+				if(_upNum < _async){
 					if(_fileForms[j].status == 0){
 						_fileForms[j].status = 1;
 						_upNum ++;
-						upNum ++;
 						this.ajaxUp(_fileForms[j]);
 					}
 				}else{
@@ -134,44 +163,136 @@
 		ajaxUp:function(formObject){
 			var form = formObject.form;
 			var that = this;
-			$.ajax({
-	          url: _upUrl,
-	          type: "POST",
-	          data: form,
-	          async: true,        //异步
-	          processData: false,  //很重要，告诉jquery不要对form进行处理
-	          contentType: false,  //很重要，指定为false才能形成正确的Content-Type
-	          success: function(data){
-	          	//TODO 判断服务回传数据
+			var xhr = createXMLHttpRequest();
+			xhr.upload.addEventListener("progress", uploadProgress, false);
+		    xhr.addEventListener("load", uploadComplete, false);
+		    xhr.addEventListener("error", uploadFailed, false);
+		    xhr.addEventListener("abort", uploadCanceled, false);
+		   
+		    xhr.open("POST",_upUrl,true);
+		    xhr.send(form);
+
+		    function uploadComplete(){
 	            _succeed++;
-	            if(_succeed == _shardCount){
-	            	console.log(_succeed);
+				_upNum--;
+				if(_succeed == _shardCount){
 	            	//TODO  全部上传完成
-	            	that.showTip('正在合并文件','notice');
-	            	$.post(_upUrl,{name:_fileName,total:_shardCount,mearge:'yes'},function(data){
-	            		that.showTip(data,'success');
-	            		_file.val('');
-	            	})
-	            	
+	            	_this.showTip(100,'process');
+	            	_this.showTip('正在合并文件','merge');
+	            	var merge_xhr = createXMLHttpRequest();
+	            	merge_xhr.onreadystatechange = function(){
+	            		if(merge_xhr.readyState == 4){
+        					if(merge_xhr.status == 200){
+        						_this.showTip(merge_xhr.responseText,'success');
+	            				_file.value = '';
+        					}
+        				}
+	            	}
+	            	merge_xhr.open('POST',_upUrl,true);
+	            	var mergeForm = new FormData();
+	            	mergeForm.append('shard-merge','yes');
+	            	mergeForm.append("shard-name", _fileName);
+		    		mergeForm.append("shard-total", _shardCount); 
+	            	merge_xhr.send(mergeForm);
 	            }else{
-	            	console.log('已经上传:'+_succeed+'/'+_shardCount);
-	            	that.showTip(parseInt(_succeed/_shardCount*100),'process');
-	            	that.upFile();
+	            	_this.showTip(parseInt(_succeed/_shardCount*100),'process');
+	            	_this.upFile();
 	            }
-	          }
-	        })
+	            
+			};
+			function uploadFailed(){
+				this.showTip('上传出错','failed');
+				_errored++;
+			};
+			function uploadCanceled(){
+				this.showTip('上传终止','cancel');
+				_abort = true;
+			};
+			function uploadProgress(ev){
+				/*
+				var percent = 0; 
+	            if(ev.lengthComputable) { 
+	                percent = 100 * ev.loaded/ev.total; 
+	            } 
+	            */
+			};
+
 		},
+
+		
 		
 		showTip:function(tip,flag){
-			if(_showTip != null){
-				_showTip(tip,flag);
-			}else{
-				console.log(tip);
+			if(flag == 'success' || flag == 'failed' || flag == 'error' || flag == 'cancel'){
+				_btn.disabled = false;
 			}
-			
+			if(_showTip != null){
+				_showTip(_fileObj,tip,flag);
+			}else{
+				this.tipDisplay(tip,flag)
+			}
+		},
+
+		tipDisplay:function(tip,flag){
+			if(!document.getElementById(_file.id+'-tip')) {
+				this.createTipDiv();
+			}
+			var tipDiv = document.getElementById(_file.id+'-tip');
+			tipDiv.style.display = 'block';
+			if(flag == 'notice'){
+				tipDiv.firstChild.innerHTML = tip;
+			}else if(flag == 'process'){
+				document.getElementById(_file.id+'-process-bg').style.display = 'block';
+				tipDiv.firstChild.innerHTML = '已完成：'+tip+'%';
+				document.getElementById(_file.id+'-process').style.width = tip+'%';
+			}else if(flag == 'success'){
+				document.getElementById(_file.id+'-process').style.width = '100%';
+				tipDiv.firstChild.innerHTML = '上传成功';
+				if(_btn.getAttribute('data-shardUpload')){
+					var eid = _btn.getAttribute('data-shardUpload');
+					document.getElementById(eid).value = tip;
+				}
+				setTimeout(function(){tipDiv.style.display = 'none';},2000);
+			}else{
+				tipDiv.firstChild.innerHTML = tip;
+				document.getElementById(_file.id+'-process-bg').style.display = 'none';
+			}
+		},
+		createTipDiv:function(){
+			var tipDiv = document.createElement('DIV');
+				tipDiv.style.position = 'fixed';
+				tipDiv.style.right='0';
+				tipDiv.style.bottom = '0';
+				tipDiv.style.width = '200px';
+				tipDiv.style.padding = '10px';
+				tipDiv.style.backgroundColor = '#fff';
+				tipDiv.style.border = '1px solid #dedede';
+				tipDiv.id = _file.id+'-tip';
+				//TODO 设置className
+			var tipHTML = '<div style="text-align:center;margin-bottom:5px;font-size:14px"></div><div style="width:100%;height:20px;background-color:#dedede;border-radius:20px;overflow:hidden" id="'+_file.id+'-process-bg"><span style="display:block;background-color:green;height:20px;width:0px;float:left" id="'+_file.id+'-process"></span></div>';
+				tipDiv.innerHTML = tipHTML;
+			document.body.appendChild(tipDiv);
 		}
 
 	}
 
+	function createXMLHttpRequest() {  
+	    var XMLHttpReq;
+	    try {  
+	        XMLHttpReq = new ActiveXObject("Msxml2.XMLHTTP");//IE高版本创建XMLHTTP  
+	    }  
+	    catch(E) {  
+	        try {  
+	            XMLHttpReq = new ActiveXObject("Microsoft.XMLHTTP");//IE低版本创建XMLHTTP  
+	        }  
+	        catch(E) {  
+	            XMLHttpReq = new XMLHttpRequest();//兼容非IE浏览器，直接创建XMLHTTP对象  
+	        }  
+	    }  
+	    return XMLHttpReq;
+	};
+
 	window.shardUpload = shardUpload;
 }(window);
+
+
+  

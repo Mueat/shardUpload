@@ -1,13 +1,13 @@
 <?php
-$path = '../upload';
+$path = 'upload/';
 define('_UPLOAD_PATH', $path);
 
 
 function shardUpload(){
-    $data = $_FILES["data"];
-    $total = $_POST['total'];
-    $index = $_POST['index'];
-    $name = $_POST['name'];
+    $data = $_FILES["shard-data"];
+    $total = $_POST['shard-total'];
+    $index = $_POST['shard-index'];
+    $name = $_POST['shard-name'];
     $dr = _UPLOAD_PATH;
 
     $savename = shardName($name,$index);
@@ -16,8 +16,8 @@ function shardUpload(){
 }
 
 function merge(){
-    $name = $_POST['name'];
-    $total = $_POST['total'];
+    $name = $_POST['shard-name'];
+    $total = $_POST['shard-total'];
     $dr = _UPLOAD_PATH;
     $exts = explode('.', $name);
     $newName = md5($name.time()).'.'.$exts[count($exts)-1];
@@ -31,7 +31,7 @@ function merge(){
         unlink($thisfilepath);
     }
     fclose($fp); 
-    echo $newName;
+    echo $newFile;
 }
 
 function shardName($name,$index){
@@ -39,7 +39,7 @@ function shardName($name,$index){
 	return _UPLOAD_PATH.md5($name).'_'.$index.'.txt';
 }
 
-if($_POST['mearge'] == 'yes'){
+if($_POST['shard-merge'] == 'yes'){
 	merge();
 }else{
 	shardUpload();
